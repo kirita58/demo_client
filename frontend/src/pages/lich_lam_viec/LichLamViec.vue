@@ -1147,7 +1147,10 @@ const filteredNvModal = computed(() => {
       (nv.maNhanVien || "").toLowerCase().includes(q);
 
     const koPhaiAdmin = nv.idQuyenHan !== 1;
-    return nhanVienSearch && koPhaiAdmin;
+    // Thêm điều kiện: bỏ qua nhân viên có trangThai là false hoặc 0
+    const dangHoatDong = nv.trangThai !== false && nv.trangThai !== 0; 
+    
+    return nhanVienSearch && koPhaiAdmin && dangHoatDong;
   });
 });
 
@@ -1157,7 +1160,9 @@ const filteredCaModal = computed(() => {
   return listCa.value.filter((ca) => {
     const matchesSearch = (ca.tenCa || "").toLowerCase().includes(q);
     const notSelected = !isCaSelected(ca.id);
-    return matchesSearch && notSelected;
+    const dangHoatDong = ca.trangThai !== false && ca.trangThai !== 0;
+    
+    return matchesSearch && notSelected && dangHoatDong;
   });
 });
 
@@ -1291,6 +1296,25 @@ const closeModal = () => {
   searchCaModal.value = "";
 };
 
+const getErrorMessage = (error) => {
+  if (error?.response?.data?.message) {
+    return error.response.data.message;
+  }
+
+  const rawMessage = error?.message || error;
+  if (typeof rawMessage === 'string') {
+    try {
+      const parsedError = JSON.parse(rawMessage);
+      if (parsedError.message) {
+        return parsedError.message;
+      }
+    } catch (e) {
+      return rawMessage;
+    }
+  }
+  return "Không thể lưu dữ liệu";
+};
+
 const handleSubmit = async () => {
   if (!form.ngayLam) {
     alert("Vui lòng chọn ngày làm việc!");
@@ -1390,7 +1414,8 @@ const handleSubmit = async () => {
     await loadData();
   } catch (error) {
     console.error("Lỗi khi lưu lịch làm việc:", error);
-    alert("Có lỗi xảy ra: " + (error?.message || "Không thể lưu dữ liệu"));
+    // Sử dụng getErrorMessage thay vì gọi thẳng error.message
+    alert("Có lỗi xảy ra: " + getErrorMessage(error));
   } finally {
     loading.value = false;
   }
@@ -1439,7 +1464,7 @@ const deletePhanCong = async (id) => {
     alert("Xóa phân công thành công!");
     await loadData();
   } catch (e) {
-    alert("Xóa phân công thất bại: " + (e?.message || "Có lỗi xảy ra"));
+    alert("Xóa phân công thất bại: " + getErrorMessage(e));
   }
 };
 
@@ -1507,7 +1532,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 .filters-bar {
   display: flex;
   gap: 20px;
-  align-items: flex-end;
+  align-items: center;
   flex-wrap: wrap;
   flex: 1;
 }
@@ -1832,6 +1857,10 @@ td {
   display: block;
   margin-bottom: 5px;
   font-weight: 500;
+}
+
+.filters-bar .form-group {
+  margin-bottom: 0;
 }
 
 .req {

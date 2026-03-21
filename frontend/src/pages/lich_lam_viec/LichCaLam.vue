@@ -1,6 +1,9 @@
 <!-- File: src/pages/lich_lam_viec/LichCaLam.vue -->
 <template>
   <div class="lich-page">
+    <div class="header-section">
+      <h2 class="page-title">Quản Lý Ca Làm Việc</h2>
+    </div>
     <!-- toast status messages (same style used in taikhoan_nhanvien) -->
     <div v-if="pageToast.show" class="ss-page-toast" :class="pageToast.type">
       <span class="material-icons-outlined ss-page-toast-ic">
@@ -15,73 +18,52 @@
       <div class="ss-confirm-msg">{{ confirmTrangThai.msg }}</div>
 
       <div class="ss-confirm-actions">
-        <button
-          class="ss-confirm-btn ss-confirm-cancel"
-          type="button"
-          @click="cancelConfirmTrangThai"
-          :disabled="confirmTrangThai.loading"
-        >
+        <button class="ss-confirm-btn ss-confirm-cancel" type="button" @click="cancelConfirmTrangThai"
+          :disabled="confirmTrangThai.loading">
           Hủy
         </button>
-        <button
-          class="ss-confirm-btn ss-confirm-ok"
-          type="button"
-          @click="okConfirmTrangThai"
-          :disabled="confirmTrangThai.loading"
-        >
+        <button class="ss-confirm-btn ss-confirm-ok" type="button" @click="okConfirmTrangThai"
+          :disabled="confirmTrangThai.loading">
           {{ confirmTrangThai.loading ? "Đang cập nhật..." : "Xác nhận" }}
         </button>
       </div>
     </div>
 
-    <div class="card-box">
-      <div class="filter-header">
-        <h3>Bộ lọc tìm kiếm</h3>
-        <button class="btn-icon-bg" title="Xóa bộ lọc" @click="resetFilter">
-          <span><i class="fa-solid fa-filter-circle-xmark"></i></span>
-        </button>
+    <div class="panel">
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <div class="search-wrapper">
+            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+            <input v-model="filters.keyword" type="text" placeholder="Nhập tên ca, mã ca..." class="search-input" />
+          </div>
+        </div>
+
+        <div class="toolbar-right">
+          <button class="btn btn-reset" @click="resetFilter" type="button">
+            <span class="material-icons-outlined btn-mi">restart_alt</span>
+            Đặt lại bộ lọc
+          </button>
+        </div>
       </div>
 
-      <div class="filter-body">
-        <div class="form-group filter-col">
-          <label>Tìm kiếm chung</label>
-          <div class="search-input-wrapper">
-            <span><i class="fa-solid fa-magnifying-glass search-icon"></i></span>
-            <input type="text" class="form-control pl-35" placeholder="Nhập tên ca, mã ca..."
-              v-model="filters.keyword" />
-          </div>
+      <div class="filters-bar">
+        <div class="filter-group">
+          <label class="ss-label">Giờ bắt đầu:</label>
+          <input type="time" v-model="filters.gioBatDau" class="filter-pill" />
         </div>
 
-        <div class="form-group filter-col">
-          <label>Thời gian bắt đầu</label>
-          <div class="time-input-wrapper">
-            <input type="time" class="form-control" v-model="filters.gioBatDau" />
-          </div>
+        <div class="filter-group">
+          <label class="ss-label">Giờ kết thúc:</label>
+          <input type="time" v-model="filters.gioKetThuc" class="filter-pill" />
         </div>
 
-        <div class="form-group filter-col">
-          <label>Thời gian kết thúc</label>
-          <div class="time-input-wrapper">
-            <input type="time" class="form-control" v-model="filters.gioKetThuc" />
-          </div>
-        </div>
-
-        <div class="form-group filter-col">
-          <label>Trạng thái</label>
-          <div class="radio-group">
-            <label class="radio-container">
-              <input type="radio" value="all" v-model="filters.trangThai" />
-              <span class="checkmark"></span> Tất cả
-            </label>
-            <label class="radio-container">
-              <input type="radio" value="active" v-model="filters.trangThai" />
-              <span class="checkmark"></span> Hoạt động
-            </label>
-            <label class="radio-container">
-              <input type="radio" value="inactive" v-model="filters.trangThai" />
-              <span class="checkmark"></span> Ngưng
-            </label>
-          </div>
+        <div class="filter-group">
+          <label class="ss-label">Trạng thái:</label>
+          <select v-model="filters.trangThai" class="filter-pill">
+            <option value="all">Tất cả</option>
+            <option value="active">Hoạt động</option>
+            <option value="inactive">Ngưng</option>
+          </select>
         </div>
       </div>
     </div>
@@ -133,16 +115,12 @@
                 <span class="time-badge end">{{ ca.gioKetThuc }}</span>
               </td>
               <td class="text-center">
-  <label class="switch">
-    <input 
-      type="checkbox" 
-      :checked="ca.trangThai" 
-      :disabled="!hasPermission"
-      @click.stop.prevent="toggleTrangThai(ca)"
-    >
-    <span class="slider round"></span>
-  </label>
-</td>
+                <label class="switch">
+                  <input type="checkbox" :checked="ca.trangThai" :disabled="!hasPermission"
+                    @click.stop.prevent="toggleTrangThai(ca)">
+                  <span class="slider round"></span>
+                </label>
+              </td>
               <td class="text-center action-col">
                 <button class="ss-icon-btn-view" type="button" @click="openModal(ca)">
                   <span class="material-icons-outlined">visibility</span>
@@ -202,8 +180,7 @@
 
 <script setup>
 import { createCaLam, getAllCaLam, updateCaLam } from '@/services/lich_lam_viec/ca_lamService';
-import { computed } from 'vue';
-import { ref, reactive, onMounted } from 'vue';
+import { computed, ref, reactive, onMounted, watch } from 'vue';
 
 const getUser = () => {
   const raw = localStorage.getItem("user") || sessionStorage.getItem("user") ||
@@ -223,6 +200,9 @@ const hasPermission = computed(() => {
 
   return true;
 });
+
+const danhSachCaLam = ref([]);
+const caLamOrigin = ref([]);
 
 const showModal = ref(false);
 const isEditing = ref(false);
@@ -289,9 +269,9 @@ const capNhatTrangThai = async (ca, newValue) => {
     };
 
     await updateCaLam(id, payload);
-    
-    ca.trangThai = nextValue; 
-    
+
+    ca.trangThai = nextValue;
+
     showPageToast('success', 'Đã cập nhật trạng thái');
   } catch (error) {
     console.error('Lỗi khi cập nhật trạng thái:', error);
@@ -332,7 +312,43 @@ const form = reactive({
   trangThai: true
 });
 
-const danhSachCaLam = ref([]);
+const handleFilter = () => {
+  let filtered = [...caLamOrigin.value];
+
+  // 1. Lọc theo từ khóa (tên ca, mã ca)
+  if (filters.keyword.trim()) {
+    const kw = filters.keyword.trim().toLowerCase();
+    filtered = filtered.filter(ca =>
+      (ca.tenCa && ca.tenCa.toLowerCase().includes(kw)) ||
+      (ca.maCa && ca.maCa.toLowerCase().includes(kw))
+    );
+  }
+
+  // 2. Lọc theo giờ bắt đầu
+  if (filters.gioBatDau) {
+    filtered = filtered.filter(ca => {
+      if (!ca.gioBatDau) return false;
+      return ca.gioBatDau.startsWith(filters.gioBatDau);
+    });
+  }
+
+  // 3. Lọc theo giờ kết thúc
+  if (filters.gioKetThuc) {
+    filtered = filtered.filter(ca => {
+      if (!ca.gioKetThuc) return false;
+      return ca.gioKetThuc.startsWith(filters.gioKetThuc);
+    });
+  }
+
+  // 4. Lọc theo trạng thái
+  if (filters.trangThai !== 'all') {
+    const isActive = filters.trangThai === 'active';
+    filtered = filtered.filter(ca => !!ca.trangThai === isActive);
+  }
+
+  // Gán lại kết quả đã lọc cho bảng hiển thị
+  danhSachCaLam.value = filtered;
+};
 
 const resetFilter = () => {
   filters.keyword = '';
@@ -344,7 +360,8 @@ const resetFilter = () => {
 const loadData = async () => {
   try {
     const res = await getAllCaLam();
-    danhSachCaLam.value = Array.isArray(res) ? res : res.content || [];
+    caLamOrigin.value = Array.isArray(res) ? res : res.content || [];
+    handleFilter();
   } catch (e) {
     console.error(e);
   }
@@ -379,13 +396,37 @@ const closeModal = () => {
 };
 
 const handleSubmit = async () => {
-  if (!form.tenCa.trim()) {
-    alert('Tên ca không được để trống!');
+  const tenCaTrimmed = form.tenCa.trim();
+
+  if (tenCaTrimmed.length === 0) {
+    showPageToast('error', 'Tên ca không được để trống!');
+    return;
+  }
+
+  if (tenCaTrimmed.length > 50) {
+    showPageToast('error', 'Tên ca không được vượt quá 50 kí tự!');
+    return;
+  }
+
+  const kitudacbiet = /[~`!@#$%^&*()+=\-[\]\\';,/{}|\\":<>?]/g;
+
+  if (kitudacbiet.test(tenCaTrimmed)) {
+    showPageToast('error', 'Tên ca không được chứa ký tự đặc biệt!');
+    return;
+  }
+
+  if (!form.gioBatDau || !form.gioKetThuc) {
+    showPageToast('error', 'Vui lòng chọn đầy đủ giờ bắt đầu và giờ kết thúc!');
+    return;
+  }
+
+  if (form.gioBatDau === form.gioKetThuc) {
+    showPageToast('error', 'Giờ bắt đầu và giờ kết thúc không được trùng nhau!');
     return;
   }
 
   const payload = {
-    tenCa: form.tenCa.trim(),
+    tenCa: tenCaTrimmed,
     gioBatDau: form.gioBatDau ? `${form.gioBatDau}:00` : null,
     gioKetThuc: form.gioKetThuc ? `${form.gioKetThuc}:00` : null,
     moTa: form.moTa.trim(),
@@ -395,25 +436,47 @@ const handleSubmit = async () => {
   try {
     if (isEditing.value) {
       await updateCaLam(currentId.value, payload);
-      alert('Cập nhật thành công!');
+      showPageToast('success', 'Cập nhật thành công!');
     } else {
       await createCaLam(payload);
-      alert('Thêm mới thành công!');
+      showPageToast('success', 'Thêm mới thành công!');
     }
     closeModal();
     loadData();
   } catch (error) {
     console.error('Lỗi khi lưu ca làm việc:', error);
-    alert('Có lỗi xảy ra, vui lòng thử lại.');
+
+    let errorMsg = 'Có lỗi xảy ra, vui lòng thử lại.';
+
+    if (error.response && error.response.data && error.response.data.message) {
+      errorMsg = error.response.data.message;
+    } else if (error.message) {
+      try {
+        const parsed = JSON.parse(error.message.replace('Error: ', ''));
+        if (parsed.message) errorMsg = parsed.message;
+      } catch {
+        errorMsg = error.message;
+      }
+    }
+
+    showPageToast('error', errorMsg);
   }
 };
 
 
 const toggleTrangThai = (ca) => {
   if (!hasPermission.value) return;
-  const newValue = !ca.trangThai; 
+  const newValue = !ca.trangThai;
   openConfirmTrangThai(ca, newValue);
 };
+
+watch(
+  filters,
+  () => {
+    handleFilter();
+  },
+  { deep: true }
+);
 
 onMounted(() => {
   loadData();
@@ -426,6 +489,14 @@ onMounted(() => {
   padding: 20px;
   background-color: #f8f9fa;
   min-height: 100vh;
+}
+
+.page-title {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 30px;
+  margin-top: 10px;
+  color: rgba(17, 24, 39, 0.92);
 }
 
 .card-box {
@@ -956,6 +1027,7 @@ input:checked + .slider:before {
   background: #fef2f2;
   border-color: #fecaca;
 }
+
 /* =======================
    ✅ TOAST (TRANG)
    ======================= */
@@ -975,19 +1047,43 @@ input:checked + .slider:before {
   border: 1px solid rgba(17, 24, 39, 0.12);
   box-shadow: 0 18px 45px rgba(17, 24, 39, 0.14);
 }
-.ss-page-toast.success { border-color: rgba(34, 197, 94, 0.25); }
-.ss-page-toast.error { border-color: rgba(239, 68, 68, 0.25); }
-.ss-page-toast.info { border-color: rgba(59, 130, 246, 0.25); }
-.ss-page-toast-ic { font-size: 18px; color: rgba(17, 24, 39, 0.55); }
-.ss-page-toast.success .ss-page-toast-ic { color: rgba(34, 197, 94, 0.95); }
-.ss-page-toast.error .ss-page-toast-ic { color: rgba(239, 68, 68, 0.95); }
-.ss-page-toast.info .ss-page-toast-ic { color: rgba(59, 130, 246, 0.95); }
+
+.ss-page-toast.success {
+  border-color: rgba(34, 197, 94, 0.25);
+}
+
+.ss-page-toast.error {
+  border-color: rgba(239, 68, 68, 0.25);
+}
+
+.ss-page-toast.info {
+  border-color: rgba(59, 130, 246, 0.25);
+}
+
+.ss-page-toast-ic {
+  font-size: 18px;
+  color: rgba(17, 24, 39, 0.55);
+}
+
+.ss-page-toast.success .ss-page-toast-ic {
+  color: rgba(34, 197, 94, 0.95);
+}
+
+.ss-page-toast.error .ss-page-toast-ic {
+  color: rgba(239, 68, 68, 0.95);
+}
+
+.ss-page-toast.info .ss-page-toast-ic {
+  color: rgba(59, 130, 246, 0.95);
+}
+
 .ss-page-toast-msg {
   color: rgba(17, 24, 39, 0.86);
   font-size: 13px;
   line-height: 1.35;
   flex: 1;
 }
+
 .ss-page-toast-x {
   border: none;
   background: transparent;
@@ -996,7 +1092,10 @@ input:checked + .slider:before {
   line-height: 1;
   color: rgba(17, 24, 39, 0.45);
 }
-.ss-page-toast-x:hover { color: rgba(17, 24, 39, 0.7); }
+
+.ss-page-toast-x:hover {
+  color: rgba(17, 24, 39, 0.7);
+}
 
 /* =======================
    ✅ TOAST XÁC NHẬN
@@ -1048,14 +1147,21 @@ input:checked + .slider:before {
   font-weight: 700;
   transition: 0.15s ease;
 }
-.ss-confirm-btn:disabled { opacity: 0.7; cursor: not-allowed; }
+
+.ss-confirm-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
 
 .ss-confirm-cancel {
   background: #f3f4f6;
   border-color: rgba(17, 24, 39, 0.12);
   color: rgba(17, 24, 39, 0.82);
 }
-.ss-confirm-cancel:hover { background: #eef0f3; }
+
+.ss-confirm-cancel:hover {
+  background: #eef0f3;
+}
 
 .ss-confirm-ok {
   background: #ff4d4f;
@@ -1063,6 +1169,170 @@ input:checked + .slider:before {
   color: #fff;
   box-shadow: 0 10px 18px rgba(255, 77, 79, 0.16);
 }
-.ss-confirm-ok:hover { filter: brightness(0.98); }
 
+.ss-confirm-ok:hover {
+  filter: brightness(0.98);
+}
+
+/* =======================
+   ✅ BỘ LỌC TÌM KIẾM (Style mới)
+   ======================= */
+.panel {
+  background: #fff;
+  border-radius: 14px;
+  padding: 16px;
+  border: 1px solid rgba(255, 77, 79, 0.18);
+  box-shadow: 0 18px 50px rgba(17, 24, 39, 0.08);
+  margin-bottom: 20px;
+}
+
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.toolbar-left,
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.search-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-icon {
+  position: absolute;
+  left: 12px;
+  color: rgba(17, 24, 39, 0.40);
+  font-size: 13px;
+  pointer-events: none;
+}
+
+.search-input {
+  height: 36px;
+  padding: 0 12px 0 34px;
+  border-radius: 12px;
+  border: 1px solid rgba(17, 24, 39, 0.14);
+  outline: none;
+  min-width: 420px;
+  color: rgba(17, 24, 39, 0.82);
+  font-size: 13px;
+  background: #F9FAFB;
+}
+
+.search-input:focus {
+  border-color: rgba(255, 77, 79, 0.45);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(255, 77, 79, 0.10);
+}
+
+.btn {
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(17, 24, 39, 0.14);
+  background: #fff;
+  color: rgba(17, 24, 39, 0.88);
+  font-size: 13px;
+  font-weight: 400;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: 0.15s ease;
+}
+
+.btn-mi {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.btn-reset {
+  background: #4b5563 !important;
+  color: #fff !important;
+  border: none !important;
+}
+
+.btn-reset:hover {
+  filter: brightness(0.98);
+}
+
+.btn-newaccount {
+  border: none !important;
+  color: #fff !important;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  background: linear-gradient(90deg, #ff4d4f 0%, #111827 100%) !important;
+  box-shadow: 0 10px 18px rgba(255, 77, 79, 0.16);
+}
+
+.btn-newaccount:hover {
+  filter: brightness(0.98);
+}
+
+.filters-bar {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.filter-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.ss-label {
+  white-space: nowrap;
+  margin: 0;
+  line-height: 1;
+  font-size: 13px;
+  font-weight: 400;
+  color: rgba(17, 24, 39, 0.82);
+  flex: 0 0 auto;
+}
+
+.filter-pill {
+  height: 36px;
+  min-width: 160px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 400;
+  color: rgba(17, 24, 39, 0.82);
+  border: 1px solid rgba(17, 24, 39, 0.14);
+  padding: 0 10px;
+  outline: none;
+  background: #fff;
+}
+
+.filter-pill:focus {
+  border-color: rgba(255, 77, 79, 0.45);
+}
+
+@media (max-width: 900px) {
+  .search-input {
+    min-width: 260px;
+    width: 100%;
+  }
+
+  .filters-bar {
+    gap: 10px;
+  }
+}
 </style>

@@ -131,10 +131,17 @@
         </div>
       </div>
 
-      <div v-if="errorMsg" class="alert error">
-        <i class="fa-solid fa-circle-exclamation"></i>
-        <span>{{ errorMsg }}</span>
-      </div>
+      <div class="card">
+  <div v-if="addrErrorMsg" class="alert error">
+    <i class="fa-solid fa-circle-exclamation"></i>
+    <span>{{ addrErrorMsg }}</span>
+  </div>
+</div>
+
+      <div v-if="toast.show" class="ss-page-toast" :class="toast.type">
+  <div class="ss-page-toast-msg">{{ toast.msg }}</div>
+  <button class="ss-page-toast-x" type="button" @click="toast.show = false">×</button>
+</div>
 
       <div v-if="successMsg" class="alert success">
         <i class="fa-solid fa-circle-check"></i>
@@ -154,8 +161,14 @@ import vnAddressService from "@/services/vnAddressService";
 const router = useRouter();
 
 const saving = ref(false);
-const errorMsg = ref("");
+const addrErrorMsg = ref("");
 const successMsg = ref("");
+
+const toast = ref({
+  show: false,
+  type: "error",
+  msg: ""
+});
 
 const form = ref({
   tenKhachHang: "",
@@ -251,30 +264,72 @@ const previewAddress = (a) => {
 };
 
 const validate = () => {
-  if (!form.value.tenKhachHang) return "Vui lòng nhập Tên khách hàng";
-  if (!String(form.value.email || "").trim()) return "Vui lòng nhập Email";
-  if (!form.value.tenTaiKhoan) return "Vui lòng nhập Tên tài khoản";
-  if (!form.value.matKhau) return "Vui lòng nhập Mật khẩu";
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const phoneRegex = /^(0[3|5|7|8|9])[0-9]{8}$/;
 
-  if (!addresses.value.length) return "Vui lòng thêm ít nhất 1 địa chỉ";
-  if (!addresses.value.some((x) => x.macDinh)) return "Vui lòng chọn 1 địa chỉ mặc định";
+  // --- NHÓM 1: LỖI KHÁCH HÀNG (Dùng Toast) ---
+  if (!form.value.tenKhachHang || form.value.tenKhachHang.length < 5 || form.value.tenKhachHang.length > 100) 
+    return { type: 'customer', msg: "Tên khách hàng không được để trống và phải từ 5 - 100 ký tự" };
+  
+  if (!form.value.email || form.value.email.length < 5 || form.value.email.length > 100 || !emailRegex.test(form.value.email)) 
+    return { type: 'customer', msg: "Email không được để trống, độ dài từ 5 - 100 ký tự và phải đúng định dạng" };
+  
+  if (!form.value.soDienThoai || !phoneRegex.test(form.value.soDienThoai)) 
+    return { type: 'customer', msg: "Số điện thoại không được để trống và phải đúng định dạng (10 số)" };
+  
+  if (form.value.gioiTinh === null || form.value.gioiTinh === "") 
+    return { type: 'customer', msg: "Giới tính không được để trống" };
 
-  for (const a of addresses.value) {
-    if (!a.tenDiaChi?.trim()) return "Vui lòng nhập Tên địa chỉ cho tất cả địa chỉ";
+  if (!form.value.ngaySinh) 
+    return { type: 'customer', msg: "Ngày sinh không được để trống" };
+
+  // --- NHÓM 2: LỖI ĐỊA CHỈ (Hiện ở dưới) ---
+  if (!addresses.value.length) 
+    return { type: 'address', msg: "Vui lòng thêm ít nhất 1 địa chỉ" };
+  if (!addresses.value.some((x) => x.macDinh)) 
+    return { type: 'address', msg: "Vui lòng chọn 1 địa chỉ mặc định" };
+
+  for (let i = 0; i < addresses.value.length; i++) {
+    const a = addresses.value[i];
+    if (!a.tenDiaChi || a.tenDiaChi.length < 5) 
+      return { type: 'address', msg: `Địa chỉ thứ ${i + 1}: Tên địa chỉ phải từ 5 - 255 ký tự` };
+    if (!a.diaChiCuThe || a.diaChiCuThe.length < 5 || a.diaChiCuThe.length > 255) 
+      return { type: 'address', msg: `Địa chỉ thứ ${i + 1}: Số nhà/Đường phải từ 5 - 255 ký tự` };
+    if (!a.tinhCode || !a.huyenCode || !a.xaCode) 
+      return { type: 'address', msg: `Địa chỉ thứ ${i + 1}: Vui lòng chọn đầy đủ Tỉnh/Huyện/Xã` };
   }
-  return "";
+
+  return null;
+};
+
+let toastTimer = null;
+const showToast = (type, msg) => {
+  toast.value = { show: true, type, msg };
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    toast.value.show = false;
+  }, 3000);
 };
 
 const submit = async () => {
-  errorMsg.value = "";
   successMsg.value = "";
 
   form.value.tenTaiKhoan = buildUsername(form.value.tenKhachHang);
   form.value.matKhau = generatePassword();
 
-  const msg = validate();
-  if (msg) return (errorMsg.value = msg);
+  toast.value.show = false;
+  addrErrorMsg.value = "";
 
+  const error = validate();
+  
+  if (error) {
+    if (error.type === 'customer') {
+      showToast("error", error.msg); // Lỗi khách hàng -> Bay lên Toast
+    } else {
+      addrErrorMsg.value = error.msg; // Lỗi địa chỉ -> Nhảy xuống dưới
+    }
+    return;
+  }
   const ok = confirm(`Xác nhận tạo khách hàng: "${form.value.tenKhachHang}" ?`);
   if (!ok) return;
 
@@ -314,11 +369,15 @@ const submit = async () => {
 
     await Promise.all(tasks);
 
-    successMsg.value = "Tạo khách hàng + địa chỉ thành công!";
-    setTimeout(() => back(), 350);
+    showToast("success", "Thêm khách hàng thành công!");
+    
+    setTimeout(() => {
+      router.push({ name: "tai-khoan-khach-hang", query: { added: true } });
+    }, 1000);
+
   } catch (e) {
     console.log(e);
-    errorMsg.value = e?.message || "Tạo khách hàng thất bại";
+    showToast("error", e?.message || "Tạo khách hàng thất bại");
   } finally {
     saving.value = false;
   }
@@ -346,7 +405,7 @@ onMounted(async () => {
   font-weight: 400 !important;
 }
 
-.taikhoan-form :deep(*) {
+.taikhoan-form :deep(*:not([class*="fa-"])) {
   font-family: inherit !important;
   font-weight: 400 !important;
   color: inherit;
@@ -417,7 +476,7 @@ onMounted(async () => {
 }
 
 .btn-primary {
-  color: #fff;
+  color: #ffffff !important;
   background: linear-gradient(90deg, #ff4d4f 0%, #111827 100%);
   box-shadow: 0 10px 18px rgba(255, 77, 79, 0.16);
 }
@@ -555,7 +614,37 @@ onMounted(async () => {
   color: #166534;
   border: 1px solid rgba(34, 197, 94, 0.20);
 }
+/* Toast thông báo giống trang quản lý nhân viên */
+.ss-page-toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 300px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid rgba(17, 24, 39, 0.12);
+  box-shadow: 0 20px 40px rgba(17, 24, 39, 0.15);
+  animation: slideIn 0.3s ease-out;
+}
 
+.ss-page-toast.error { border-color: #ef4444; background: #fef2f2; }
+.ss-page-toast.success { border-color: #22c55e; background: #f0fdf4; }
+
+.ss-page-toast-msg { font-size: 13px; color: #111827; flex: 1; }
+
+.ss-page-toast-x {
+  background: none; border: none; cursor: pointer; color: #9ca3af; font-size: 18px;
+}
+
+@keyframes slideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
 @media (max-width: 900px) {
   .row {
     grid-template-columns: 1fr;

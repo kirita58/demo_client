@@ -69,11 +69,8 @@
 
             <div class="mb-3">
               <label class="form-label">Ghi chú</label>
-              <textarea
-                class="form-control ss-input"
-                style="height:auto; min-height: 92px; padding-top: 10px"
-                v-model="nv.ghiChu"
-              ></textarea>
+              <textarea class="form-control ss-input" style="height:auto; min-height: 92px; padding-top: 10px"
+                v-model="nv.ghiChu"></textarea>
             </div>
           </div>
 
@@ -82,13 +79,11 @@
 
             <div class="mb-3">
               <label class="form-label">Thành phố</label>
-              <select class="form-control ss-input" v-model="nv.thanhPho">
+              <select class="form-control ss-input" v-model="nv.thanhPho" @change="onCityChange">
                 <option value="">Chọn thành phố</option>
-
                 <option v-if="nv.thanhPho && !thanhphoOptions.includes(nv.thanhPho)" :value="nv.thanhPho">
                   {{ nv.thanhPho }}
                 </option>
-
                 <option v-for="tp in thanhphoOptions" :key="tp" :value="tp">{{ tp }}</option>
               </select>
             </div>
@@ -96,13 +91,12 @@
             <div class="mb-3 d-flex gap-2">
               <div class="flex-grow-1">
                 <label class="form-label">Quận</label>
-                <select class="form-control ss-input" v-model="nv.quan" :disabled="!nv.thanhPho">
+                <select class="form-control ss-input" v-model="nv.quan" :disabled="!nv.thanhPho"
+                  @change="onDistrictChange">
                   <option value="">Chọn quận</option>
-
                   <option v-if="nv.quan && !quanOptions.includes(nv.quan)" :value="nv.quan">
                     {{ nv.quan }}
                   </option>
-
                   <option v-for="q in quanOptions" :key="q" :value="q">{{ q }}</option>
                 </select>
               </div>
@@ -259,6 +253,25 @@ const getAllQH = async () => {
   }
 };
 
+const onCityChange = async () => {
+  nv.value.quan = "";
+  nv.value.phuong = "";
+  wards.value = [];
+  phuongOptions.value = [];
+  
+  if (nv.value.thanhPho) {
+    await loadDistrictsByProvinceName(nv.value.thanhPho);
+  }
+};
+
+const onDistrictChange = async () => {
+  nv.value.phuong = "";
+  
+  if (nv.value.quan) {
+    await loadWardsByDistrictName(nv.value.quan);
+  }
+};
+
 const loadProvinces = async () => {
   provinces.value = await vnAddressService.getProvinces();
   thanhphoOptions.value = (provinces.value || []).map((p) => p.name);
@@ -377,14 +390,59 @@ const toggleStatus = async () => {
   }
 };
 
+const validate = () => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const phoneRegex = /^(0[3|5|7|8|9])[0-9]{8}$/;
+
+  if (!nv.value.tenNhanVien || nv.value.tenNhanVien.length < 5 || nv.value.tenNhanVien.length > 100)
+    return "Tên nhân viên không được để trống và phải từ 5 - 100 ký tự";
+
+  if (!nv.value.email || nv.value.email.length < 5 || nv.value.email.length > 100 || !emailRegex.test(nv.value.email))
+    return "Email không được để trống, độ dài từ 5 - 100 ký tự và phải đúng định dạng";
+
+  if (!nv.value.soDienThoai || !phoneRegex.test(nv.value.soDienThoai))
+    return "Số điện thoại không được để trống và phải đúng định dạng (10 số)";
+
+  if (!nv.value.ngaySinh)
+    return "Ngày sinh không được để trống";
+
+  if (!nv.value.idQuyenHan)
+    return "Quyền hạn không được để trống";
+
+  if (!nv.value.thanhPho || !nv.value.quan || !nv.value.phuong)
+    return "Vui lòng chọn đầy đủ Tỉnh/Thành, Quận/Huyện, Xã/Phường";
+
+  if (!nv.value.diaChiCuThe || nv.value.diaChiCuThe.length < 5 || nv.value.diaChiCuThe.length > 255)
+    return "Địa chỉ cụ thể không được để trống và phải từ 5 - 255 ký tự";
+
+  return "";
+};
+
 const submit = async () => {
+  const msg = validate();
+  if (msg) {
+    alert(msg);
+    return;
+  }
+
   try {
     await updateNhanVien(id, buildFormData());
     alert("Cập nhật thành công!");
     router.push("/admin/tai-khoan/nhan-vien");
   } catch (error) {
     console.error(error);
-    alert("Cập nhật thất bại: " + (error?.message || ""));
+    
+    const errorMsg = error?.response?.data?.message || error?.message || "";
+    
+    if (errorMsg.includes("duplicate key") && errorMsg.includes("email")) {
+      alert("Cập nhật thất bại: Email này đã được sử dụng bởi nhân viên khác!");
+    } 
+    else if (errorMsg.includes("duplicate key") && errorMsg.includes("ten_tai_khoan")) {
+      alert("Cập nhật thất bại: Tên tài khoản này đã tồn tại!");
+    } 
+    else {
+      alert("Cập nhật thất bại: " + errorMsg);
+    }
   }
 };
 
@@ -399,27 +457,6 @@ const cancel = async () => {
 };
 
 const back = () => router.push("/admin/tai-khoan/nhan-vien");
-
-watch(
-  () => nv.value.thanhPho,
-  async (newVal, oldVal) => {
-    if (newVal === oldVal) return;
-    nv.value.quan = "";
-    nv.value.phuong = "";
-    await loadDistrictsByProvinceName(newVal);
-    wards.value = [];
-    phuongOptions.value = [];
-  }
-);
-
-watch(
-  () => nv.value.quan,
-  async (newVal, oldVal) => {
-    if (newVal === oldVal) return;
-    nv.value.phuong = "";
-    await loadWardsByDistrictName(newVal);
-  }
-);
 
 onMounted(async () => {
   await getAllQH();
@@ -495,6 +532,7 @@ onMounted(async () => {
   font-weight: 400 !important;
   color: rgba(17, 24, 39, 0.82);
 }
+
 .ss-input:focus {
   border-color: rgba(255, 77, 79, 0.45) !important;
   box-shadow: 0 0 0 0.18rem rgba(255, 77, 79, 0.14) !important;
@@ -518,14 +556,17 @@ textarea.ss-input {
   margin: auto;
   overflow: hidden;
 }
+
 .ss-border {
   border: 1px solid rgba(255, 77, 79, 0.22);
 }
+
 .avatar-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
+
 .avatar-icon {
   font-size: 42px;
   color: #9ca3af;
@@ -547,6 +588,7 @@ textarea.ss-input {
   user-select: none;
   transition: 0.15s ease;
 }
+
 .ss-btn:hover {
   background: rgba(17, 24, 39, 0.04);
 }
@@ -562,6 +604,7 @@ textarea.ss-input {
   color: rgba(17, 24, 39, 0.88);
   border: 1px solid rgba(255, 77, 79, 0.22);
 }
+
 .ss-btn-back:hover {
   background: rgba(255, 77, 79, 0.12);
 }
@@ -572,6 +615,7 @@ textarea.ss-input {
   background: linear-gradient(90deg, #ff4d4f 0%, #111827 100%) !important;
   box-shadow: 0 10px 18px rgba(255, 77, 79, 0.16);
 }
+
 .ss-btn-primary:hover {
   filter: brightness(0.98);
 }
@@ -582,6 +626,7 @@ textarea.ss-input {
   color: #fff !important;
   box-shadow: 0 10px 18px rgba(17, 24, 39, 0.12);
 }
+
 .ss-btn-state:hover {
   filter: brightness(0.98);
 }

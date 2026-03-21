@@ -1080,6 +1080,13 @@ const setMacDinhDiaChi = async (a) => {
 
 onMounted(async () => {
   await handleFilter();
+
+  if (route.query.added) {
+    showPageToast("success", "Thêm khách hàng thành công!");
+    alert("Thêm khách hàng thành công!");
+    
+    router.replace({ query: {} });
+  }
 });
 </script>
 
