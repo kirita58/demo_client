@@ -398,6 +398,17 @@ const closeModal = () => {
 const handleSubmit = async () => {
   const tenCaTrimmed = form.tenCa.trim();
 
+  const isDuplicate = caLamOrigin.value.some(ca => 
+    ca.tenCa && 
+    ca.tenCa.toLowerCase() === tenCaTrimmed.toLowerCase() && 
+    ca.id !== currentId.value
+  );
+
+  if (isDuplicate) {
+    showPageToast('error', 'Tên ca này đã tồn tại!');
+    return;
+  }
+
   if (tenCaTrimmed.length === 0) {
     showPageToast('error', 'Tên ca không được để trống!');
     return;
@@ -425,6 +436,11 @@ const handleSubmit = async () => {
     return;
   }
 
+  if (/^\d+$/.test(tenCaTrimmed)) {
+    showPageToast('error', 'Tên ca không được chỉ chứa toàn số!');
+    return;
+  }
+  
   const payload = {
     tenCa: tenCaTrimmed,
     gioBatDau: form.gioBatDau ? `${form.gioBatDau}:00` : null,

@@ -474,8 +474,8 @@ const addrMap = ref(new Map()); // idKhachHang -> "text"
 const filters = ref({ keyword: "", status: "", gender: "" });
 
 // ✅ Khóa theo id khi đang cập nhật + chống out-of-order khi bấm nhanh
-const dangCapNhatTrangThai = ref(new Set()); // Set<id>
-const trangThaiSeqMap = ref(new Map()); // Map<id, seq>
+const dangCapNhatTrangThai = ref(new Set());
+const trangThaiSeqMap = ref(new Map());
 
 const themkh = () => router.push({ name: "tai-khoan-khach-hang-them" });
 const updatedkh = (id) => router.push({ name: "tai-khoan-khach-hang-cap-nhat", params: { id } });
@@ -610,7 +610,6 @@ const capNhatTrangThai = async (item, newValue) => {
   const nextSeq = (trangThaiSeqMap.value.get(id) ?? 0) + 1;
   trangThaiSeqMap.value.set(id, nextSeq);
 
-  // optimistic UI
   item.trangThai = nextValue;
   reApplyFilters();
 

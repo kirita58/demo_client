@@ -267,23 +267,28 @@ const validate = () => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const phoneRegex = /^(0[3|5|7|8|9])[0-9]{8}$/;
 
-  // --- NHÓM 1: LỖI KHÁCH HÀNG (Dùng Toast) ---
-  if (!form.value.tenKhachHang || form.value.tenKhachHang.length < 5 || form.value.tenKhachHang.length > 100) 
-    return { type: 'customer', msg: "Tên khách hàng không được để trống và phải từ 5 - 100 ký tự" };
+  if (!form.value.tenKhachHang) 
+    return { type: 'customer', msg: "Tên khách hàng không được để trống" };
+  if (form.value.tenKhachHang.length < 5 || form.value.tenKhachHang.length > 100) 
+    return { type: 'customer', msg: "Tên khách hàng phải từ 5 - 100 ký tự" };
   
-  if (!form.value.email || form.value.email.length < 5 || form.value.email.length > 100 || !emailRegex.test(form.value.email)) 
-    return { type: 'customer', msg: "Email không được để trống, độ dài từ 5 - 100 ký tự và phải đúng định dạng" };
+  if (!form.value.email) 
+    return { type: 'customer', msg: "Email không được để trống" };
+  if (form.value.email.length < 5 || form.value.email.length > 100) 
+    return { type: 'customer', msg: "Email phải có độ dài từ 5 - 100 ký tự" };
+  if (!emailRegex.test(form.value.email)) 
+    return { type: 'customer', msg: "Email không đúng định dạng" };
   
-  if (!form.value.soDienThoai || !phoneRegex.test(form.value.soDienThoai)) 
-    return { type: 'customer', msg: "Số điện thoại không được để trống và phải đúng định dạng (10 số)" };
+  if (!form.value.soDienThoai) 
+    return { type: 'customer', msg: "Số điện thoại không được để trống" };
+  if (!phoneRegex.test(form.value.soDienThoai)) 
+    return { type: 'customer', msg: "Số điện thoại phải đúng định dạng (10 số)" };
   
   if (form.value.gioiTinh === null || form.value.gioiTinh === "") 
     return { type: 'customer', msg: "Giới tính không được để trống" };
-
   if (!form.value.ngaySinh) 
     return { type: 'customer', msg: "Ngày sinh không được để trống" };
 
-  // --- NHÓM 2: LỖI ĐỊA CHỈ (Hiện ở dưới) ---
   if (!addresses.value.length) 
     return { type: 'address', msg: "Vui lòng thêm ít nhất 1 địa chỉ" };
   if (!addresses.value.some((x) => x.macDinh)) 
@@ -291,10 +296,17 @@ const validate = () => {
 
   for (let i = 0; i < addresses.value.length; i++) {
     const a = addresses.value[i];
-    if (!a.tenDiaChi || a.tenDiaChi.length < 5) 
+    
+    if (!a.tenDiaChi) 
+      return { type: 'address', msg: `Địa chỉ thứ ${i + 1}: Tên địa chỉ không được để trống` };
+    if (a.tenDiaChi.length < 5 || a.tenDiaChi.length > 255) 
       return { type: 'address', msg: `Địa chỉ thứ ${i + 1}: Tên địa chỉ phải từ 5 - 255 ký tự` };
-    if (!a.diaChiCuThe || a.diaChiCuThe.length < 5 || a.diaChiCuThe.length > 255) 
+
+    if (!a.diaChiCuThe) 
+      return { type: 'address', msg: `Địa chỉ thứ ${i + 1}: Số nhà/Đường không được để trống` };
+    if (a.diaChiCuThe.length < 5 || a.diaChiCuThe.length > 255) 
       return { type: 'address', msg: `Địa chỉ thứ ${i + 1}: Số nhà/Đường phải từ 5 - 255 ký tự` };
+
     if (!a.tinhCode || !a.huyenCode || !a.xaCode) 
       return { type: 'address', msg: `Địa chỉ thứ ${i + 1}: Vui lòng chọn đầy đủ Tỉnh/Huyện/Xã` };
   }

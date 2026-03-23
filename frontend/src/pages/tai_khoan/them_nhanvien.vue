@@ -393,26 +393,35 @@ const validate = () => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const phoneRegex = /^(0[3|5|7|8|9])[0-9]{8}$/;
 
-  if (!form.value.tenNhanVien || form.value.tenNhanVien.length < 5 || form.value.tenNhanVien.length > 100) 
-    return "Tên nhân viên không được để trống và phải từ 5 - 100 ký tự";
+  if (!form.value.tenNhanVien) 
+    return "Tên nhân viên không được để trống";
+  if (form.value.tenNhanVien.length < 5 || form.value.tenNhanVien.length > 100) 
+    return "Tên nhân viên phải từ 5 - 100 ký tự";
   
-  if (!form.value.email || form.value.email.length < 5 || form.value.email.length > 100 || !emailRegex.test(form.value.email)) 
-    return "Email không được để trống, độ dài từ 5 - 100 ký tự và phải đúng định dạng";
+  if (!form.value.email) 
+    return "Email không được để trống";
+  if (form.value.email.length < 5 || form.value.email.length > 100) 
+    return "Email phải có độ dài từ 5 - 100 ký tự";
+  if (!emailRegex.test(form.value.email)) 
+    return "Email không đúng định dạng";
   
-  if (!form.value.soDienThoai || !phoneRegex.test(form.value.soDienThoai)) 
-    return "Số điện thoại không được để trống và phải đúng định dạng (10 số, bắt đầu bằng 03, 05, 07, 08, 09)";
+  if (!form.value.soDienThoai) 
+    return "Số điện thoại không được để trống";
+  if (!phoneRegex.test(form.value.soDienThoai)) 
+    return "Số điện thoại phải đúng định dạng (10 số, bắt đầu bằng 03, 05, 07, 08, 09)";
   
   if (!form.value.ngaySinh) 
     return "Ngày sinh không được để trống";
-  
   if (!form.value.idQuyenHan) 
     return "Quyền hạn không được để trống";
   
   if (!addr.value.tinhCode || !addr.value.huyenCode || !addr.value.xaCode) 
     return "Vui lòng chọn đầy đủ Tỉnh/Thành, Quận/Huyện, Xã/Phường";
   
-  if (!form.value.diaChiCuThe || form.value.diaChiCuThe.length < 5 || form.value.diaChiCuThe.length > 255) 
-    return "Địa chỉ cụ thể không được để trống và phải từ 5 - 255 ký tự";
+  if (!form.value.diaChiCuThe) 
+    return "Địa chỉ cụ thể không được để trống";
+  if (form.value.diaChiCuThe.length < 5 || form.value.diaChiCuThe.length > 255) 
+    return "Địa chỉ cụ thể phải từ 5 - 255 ký tự";
 
   return "";
 };

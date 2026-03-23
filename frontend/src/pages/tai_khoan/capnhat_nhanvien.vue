@@ -394,14 +394,22 @@ const validate = () => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const phoneRegex = /^(0[3|5|7|8|9])[0-9]{8}$/;
 
-  if (!nv.value.tenNhanVien || nv.value.tenNhanVien.length < 5 || nv.value.tenNhanVien.length > 100)
-    return "Tên nhân viên không được để trống và phải từ 5 - 100 ký tự";
+  if (!nv.value.tenNhanVien) 
+    return "Tên nhân viên không được để trống";
+  if (nv.value.tenNhanVien.length < 5 || nv.value.tenNhanVien.length > 100)
+    return "Tên nhân viên phải từ 5 - 100 ký tự";
 
-  if (!nv.value.email || nv.value.email.length < 5 || nv.value.email.length > 100 || !emailRegex.test(nv.value.email))
-    return "Email không được để trống, độ dài từ 5 - 100 ký tự và phải đúng định dạng";
+  if (!nv.value.email) 
+    return "Email không được để trống";
+  if (nv.value.email.length < 5 || nv.value.email.length > 100) 
+    return "Email phải có độ dài từ 5 - 100 ký tự";
+  if (!emailRegex.test(nv.value.email)) 
+    return "Email không đúng định dạng";
 
-  if (!nv.value.soDienThoai || !phoneRegex.test(nv.value.soDienThoai))
-    return "Số điện thoại không được để trống và phải đúng định dạng (10 số)";
+  if (!nv.value.soDienThoai) 
+    return "Số điện thoại không được để trống";
+  if (!phoneRegex.test(nv.value.soDienThoai))
+    return "Số điện thoại phải đúng định dạng (10 số, bắt đầu bằng 03, 05, 07, 08, 09)";
 
   if (!nv.value.ngaySinh)
     return "Ngày sinh không được để trống";
@@ -412,8 +420,10 @@ const validate = () => {
   if (!nv.value.thanhPho || !nv.value.quan || !nv.value.phuong)
     return "Vui lòng chọn đầy đủ Tỉnh/Thành, Quận/Huyện, Xã/Phường";
 
-  if (!nv.value.diaChiCuThe || nv.value.diaChiCuThe.length < 5 || nv.value.diaChiCuThe.length > 255)
-    return "Địa chỉ cụ thể không được để trống và phải từ 5 - 255 ký tự";
+  if (!nv.value.diaChiCuThe) 
+    return "Địa chỉ cụ thể không được để trống";
+  if (nv.value.diaChiCuThe.length < 5 || nv.value.diaChiCuThe.length > 255)
+    return "Địa chỉ cụ thể phải từ 5 - 255 ký tự";
 
   return "";
 };
