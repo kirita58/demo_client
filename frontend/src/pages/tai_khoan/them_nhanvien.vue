@@ -16,6 +16,14 @@
       </div>
     </div>
 
+    <div v-if="toast.show" class="ss-page-toast" :class="toast.type">
+      <span class="material-icons-outlined ss-page-toast-ic">
+        {{ toast.type === "success" ? "check_circle" : toast.type === "error" ? "error" : "info" }}
+      </span>
+      <div class="ss-page-toast-msg">{{ toast.msg }}</div>
+      <button class="ss-page-toast-x" type="button" @click="toast.show = false">×</button>
+    </div>
+
     <div class="form-card">
       <div>
         <div class="right-col-header">
@@ -133,16 +141,28 @@ const router = useRouter();
 const saving = ref(false);
 const fileRef = ref(null);
 
-/** ✅ Map mã quyền -> text hiển thị */
+// 🛠 Đã thêm: Logic quản lý Toast
+const toast = ref({
+  show: false,
+  type: "info",
+  msg: "",
+});
+let toastTimer = null;
+
+const showToast = (type, msg) => {
+  toast.value = { show: true, type, msg };
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    toast.value.show = false;
+  }, 3000);
+};
+
 const mapTenQuyenHan = (raw) => {
   const v = String(raw ?? "").trim();
   if (!v) return v;
-
   const k = v.toUpperCase().replace(/\s+/g, "");
-
   if (k === "NHAN_VIEN" || k === "NHANVIEN" || k === "ROLE_NHAN_VIEN" || k === "ROLENHAN_VIEN") return "Nhân viên";
   if (k === "ADMIN" || k === "ROLE_ADMIN" || k === "ROLEADMIN") return "Admin";
-
   return v;
 };
 
@@ -163,7 +183,6 @@ const form = ref({
 const provinces = ref([]);
 const districts = ref([]);
 const wards = ref([]);
-
 const addr = ref({
   tinhCode: "",
   huyenCode: "",
@@ -176,7 +195,8 @@ const back = () => router.push({ name: "tai-khoan-nhan-vien" });
 
 const loadQuyenHan = async () => {
   try {
-    const res = await fetch("http://localhost:8080/api/admin/quyen-han");
+    // 🛠 Đã sửa: Xóa bỏ localhost:8080 để tự động map với domain/proxy khi deploy
+    const res = await fetch("/api/admin/quyen-han");
     if (!res.ok) return;
     const data = await res.json();
     quyenHanOptions.value = Array.isArray(data) ? data : data?.content ?? [];
@@ -204,7 +224,11 @@ const onPickFile = (e) => {
   if (!file) return;
 
   if (!file.type.startsWith("image/")) {
-    alert("Vui lòng chọn file ảnh.");
+    showToast("error", "Vui lòng chọn file ảnh.");
+    return;
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    showToast("error", "Ảnh vượt quá 5MB.");
     return;
   }
 
@@ -221,18 +245,14 @@ const clearImage = () => {
 };
 
 const removeVietnameseTones = (str) => {
-  return str
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/đ/g, "d")
-    .replace(/Đ/g, "D");
+  return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D");
 };
 
 const buildUsername = (fullName) => {
   if (!fullName) return "";
   const noTone = removeVietnameseTones(fullName.trim().toLowerCase());
-  const parts = noTone.split(/\s+/);
-  const lastName = parts[parts.length - 1];
+  const parts = noTone.split(/\s+/).filter(Boolean);
+  const lastName = parts[parts.length - 1] || "";
   const initials = parts.slice(0, parts.length - 1).map((x) => x[0]).join("");
   return lastName + initials;
 };
@@ -249,7 +269,7 @@ let scanner = null;
 const normalizeString = (str) => {
   if (!str) return "";
   let s = removeVietnameseTones(String(str).trim().toLowerCase());
-  s = s.replace(/(tinh|thanh pho|tp|huyen|quan|thi xa|xa|phuong|thi tran)\s+/g, "").trim();
+  s = s.replace(/^(tinh|thanh pho|tp|huyen|quan|q|thi xa|tx|xa|phuong|p|thi tran|tt)[\s\.]+/g, "").trim();
   s = s.replace(/\s+/g, " ");
   return s;
 };
@@ -258,12 +278,23 @@ const diachicccd = (list, nameToFind) => {
   if (!nameToFind || !Array.isArray(list) || list.length === 0) return null;
   const target = normalizeString(nameToFind);
 
+  // Ưu tiên 1: Khớp chính xác tuyệt đối
   let found = list.find((item) => normalizeString(item.name) === target);
+
+  // Ưu tiên 2: Khớp mờ
   if (!found) {
-    found = list.find(
-      (item) =>
-        normalizeString(item.name).includes(target) || target.includes(normalizeString(item.name))
-    );
+    found = list.find((item) => {
+      const itemName = normalizeString(item.name);
+      
+      // Chặn lỗi nguy hiểm: Nếu đang tìm số (VD: "1", "2") thì bắt buộc khớp chính xác
+      // Không dùng includes để tránh "1" bị nhận nhầm thành "10"
+      const isShortNumber = /^\d{1,2}$/.test(target);
+      if (isShortNumber) {
+        return itemName === target;
+      }
+      
+      return itemName.includes(target) || target.includes(itemName);
+    });
   }
   return found ? found.code : null;
 };
@@ -294,13 +325,15 @@ const CCCDScan = async (text) => {
     const tinhCode = diachicccd(provinces.value, tinhName);
     if (tinhCode) {
       addr.value.tinhCode = tinhCode;
-      await timTinh();
+      await timTinh(); // Gọi API lấy Quận/Huyện
+      await nextTick(); // CHỜ VUE VẼ <option> QUẬN/HUYỆN RA MÀN HÌNH XONG MỚI ĐI TIẾP
 
       if (huyenName) {
         const huyenCode = diachicccd(districts.value, huyenName);
         if (huyenCode) {
           addr.value.huyenCode = huyenCode;
-          await timHuyen();
+          await timHuyen(); // Gọi API lấy Xã/Phường
+          await nextTick(); // CHỜ VUE VẼ <option> XÃ/PHƯỜNG RA MÀN HÌNH XONG MỚI ĐI TIẾP
 
           if (xaName) {
             const xaCode = diachicccd(wards.value, xaName);
@@ -356,12 +389,11 @@ const onScanSuccess = async (decodedText) => {
       const data = JSON.parse(decodedText);
       await jsonScan(data);
     }
-
-    alert("Quét dữ liệu thành công!");
+    showToast("success", "Quét dữ liệu thành công!");
     stopScanner();
   } catch (e) {
     console.error("Lỗi xử lý dữ liệu:", e);
-    alert("Dữ liệu không hợp lệ hoặc lỗi hệ thống địa chỉ.");
+    showToast("error", "Dữ liệu không hợp lệ hoặc lỗi hệ thống địa chỉ.");
   }
 };
 
@@ -390,49 +422,50 @@ onBeforeUnmount(() => {
 });
 
 const validate = () => {
+  const tenNhanVien = String(form.value.tenNhanVien || "").trim();
+  const email = String(form.value.email || "").trim();
+  const soDienThoai = String(form.value.soDienThoai || "").trim();
+  const diaChiCuThe = String(form.value.diaChiCuThe || "").trim();
+
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  const phoneRegex = /^(0[3|5|7|8|9])[0-9]{8}$/;
+  const phoneRegex = /^0(?:3|5|7|8|9)\d{8}$/;
 
-  if (!form.value.tenNhanVien) 
-    return "Tên nhân viên không được để trống";
-  if (form.value.tenNhanVien.length < 5 || form.value.tenNhanVien.length > 100) 
-    return "Tên nhân viên phải từ 5 - 100 ký tự";
-  
-  if (!form.value.email) 
-    return "Email không được để trống";
-  if (form.value.email.length < 5 || form.value.email.length > 100) 
-    return "Email phải có độ dài từ 5 - 100 ký tự";
-  if (!emailRegex.test(form.value.email)) 
-    return "Email không đúng định dạng";
-  
-  if (!form.value.soDienThoai) 
-    return "Số điện thoại không được để trống";
-  if (!phoneRegex.test(form.value.soDienThoai)) 
-    return "Số điện thoại phải đúng định dạng (10 số, bắt đầu bằng 03, 05, 07, 08, 09)";
-  
-  if (!form.value.ngaySinh) 
+  if (!tenNhanVien || tenNhanVien.length < 5 || tenNhanVien.length > 100) {
+    return "Tên nhân viên không được để trống và phải từ 5 - 100 ký tự";
+  }
+  if (!email || email.length < 5 || email.length > 100 || !emailRegex.test(email)) {
+    return "Email không được để trống, độ dài từ 5 - 100 ký tự và phải đúng định dạng";
+  }
+  if (!soDienThoai || !phoneRegex.test(soDienThoai)) {
+    return "Số điện thoại không được để trống và phải đúng định dạng (10 số, bắt đầu bằng 03, 05, 07, 08, 09)";
+  }
+  if (!form.value.ngaySinh) {
     return "Ngày sinh không được để trống";
-  if (!form.value.idQuyenHan) 
+  }
+  if (!form.value.idQuyenHan) {
     return "Quyền hạn không được để trống";
-  
-  if (!addr.value.tinhCode || !addr.value.huyenCode || !addr.value.xaCode) 
+  }
+  if (!addr.value.tinhCode || !addr.value.huyenCode || !addr.value.xaCode) {
     return "Vui lòng chọn đầy đủ Tỉnh/Thành, Quận/Huyện, Xã/Phường";
-  
-  if (!form.value.diaChiCuThe) 
-    return "Địa chỉ cụ thể không được để trống";
-  if (form.value.diaChiCuThe.length < 5 || form.value.diaChiCuThe.length > 255) 
-    return "Địa chỉ cụ thể phải từ 5 - 255 ký tự";
-
+  }
+  if (!diaChiCuThe || diaChiCuThe.length < 5 || diaChiCuThe.length > 255) {
+    return "Địa chỉ cụ thể không được để trống và phải từ 5 - 255 ký tự";
+  }
   return "";
 };
 
 const submit = async () => {
+  // 🛠 Đã sửa: Chặn click đúp
+  if (saving.value) return; 
+
+  toast.value.show = false;
+
   form.value.tenTaiKhoan = buildUsername(form.value.tenNhanVien);
   form.value.matKhau = generatePassword();
 
   const msg = validate();
   if (msg) {
-    alert(msg);
+    showToast("error", msg);
     return;
   }
 
@@ -441,6 +474,11 @@ const submit = async () => {
 
     const payload = {
       ...form.value,
+      tenNhanVien: String(form.value.tenNhanVien || "").trim(),
+      email: String(form.value.email || "").trim(),
+      soDienThoai: String(form.value.soDienThoai || "").trim(),
+      diaChiCuThe: String(form.value.diaChiCuThe || "").trim(),
+      ghiChu: String(form.value.ghiChu || "").trim() || null,
       idQuyenHan: Number(form.value.idQuyenHan),
       thanhPho: findName(provinces.value, addr.value.tinhCode),
       quan: findName(districts.value, addr.value.huyenCode),
@@ -449,11 +487,16 @@ const submit = async () => {
 
     await addNhanVien(payload);
 
-    alert("Thêm nhân viên thành công!");
-    back();
+    showToast("success", "Thêm nhân viên thành công!");
+    
+    // 🛠 Đã sửa: Chờ 700ms hiển thị Toast trước khi chuyển trang
+    setTimeout(() => {
+      back();
+    }, 700);
+
   } catch (e) {
-    alert(e?.message || "Lỗi hệ thống");
-  } finally {
+    showToast("error", e?.message || "Lỗi hệ thống");
+    // 🛠 Đã sửa: Chỉ mở khóa khi có lỗi
     saving.value = false;
   }
 };
@@ -465,7 +508,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-/* ✅ Không import font ngoài – dùng font chung của dự án */
 .taikhoan-form{
   font-family: inherit;
   max-width: 1000px;
@@ -473,7 +515,6 @@ onMounted(async () => {
   color: rgba(17,24,39,0.82);
 }
 
-/* ===== Header ===== */
 .header-section{
   display:flex;
   justify-content: space-between;
@@ -495,7 +536,6 @@ onMounted(async () => {
   align-items:center;
 }
 
-/* ===== Card ===== */
 .form-card{
   background:#fff;
   border-radius: 14px;
@@ -504,14 +544,12 @@ onMounted(async () => {
   box-shadow: 0 18px 50px rgba(17,24,39,0.08);
 }
 
-/* ===== QR header ===== */
 .right-col-header{
   display:flex;
   justify-content: flex-end;
   margin-bottom: 10px;
 }
 
-/* ===== Buttons ===== */
 .btn{
   height: 36px;
   padding: 0 14px;
@@ -558,7 +596,6 @@ onMounted(async () => {
   margin-top: 6px;
 }
 
-/* ===== Avatar ===== */
 .avatar-section{
   display:flex;
   flex-direction: column;
@@ -603,7 +640,6 @@ onMounted(async () => {
   color: rgba(17,24,39,0.55);
 }
 
-/* ===== Form grid ===== */
 .form-grid{
   display:grid;
   grid-template-columns: 1fr 1fr;
@@ -654,7 +690,6 @@ onMounted(async () => {
   padding-right: 34px;
 }
 
-/* ===== Scanner overlay ===== */
 .scanner-overlay{
   position: fixed;
   inset: 0;
@@ -709,6 +744,76 @@ onMounted(async () => {
 }
 
 .d-none{ display:none; }
+
+/* 🛠 Đã thêm: CSS dành riêng cho khối Toast */
+.ss-page-toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 300px;
+  max-width: 460px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid rgba(17, 24, 39, 0.12);
+  box-shadow: 0 20px 40px rgba(17, 24, 39, 0.15);
+  animation: slideIn 0.3s ease-out;
+}
+.ss-page-toast.error {
+  border-color: #ef4444;
+  background: #fef2f2;
+}
+.ss-page-toast.success {
+  border-color: #22c55e;
+  background: #f0fdf4;
+}
+.ss-page-toast.info {
+  border-color: #3b82f6;
+  background: #eff6ff;
+}
+.ss-page-toast-ic {
+  font-size: 18px;
+  color: rgba(17, 24, 39, 0.55);
+}
+.ss-page-toast.success .ss-page-toast-ic {
+  color: #16a34a;
+}
+.ss-page-toast.error .ss-page-toast-ic {
+  color: #dc2626;
+}
+.ss-page-toast.info .ss-page-toast-ic {
+  color: #2563eb;
+}
+.ss-page-toast-msg {
+  font-size: 13px;
+  color: #111827;
+  flex: 1;
+}
+.ss-page-toast-x {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #9ca3af;
+  font-size: 18px;
+  line-height: 1;
+}
+.ss-page-toast-x:hover {
+  color: #6b7280;
+}
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
 
 @media (max-width: 768px){
   .form-grid{ grid-template-columns: 1fr; }

@@ -690,7 +690,6 @@ onMounted(() => {
   background: #10b981;
 }
 
-/* Action Buttons (Header Table) */
 .action-buttons {
   display: flex;
   gap: 10px;
