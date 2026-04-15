@@ -393,7 +393,7 @@ const submit = async () => {
 
     showToast("success", "Thêm khách hàng thành công!");
 
-    // 3. Đợi 700ms rồi chuyển trang (Không set saving.value = false ở đây nữa)
+    // 3. Đợi 700ms rồi chuyển trang
     setTimeout(() => {
       saving.value = false;
       router.push({ name: "tai-khoan-khach-hang", query: { added: true } });

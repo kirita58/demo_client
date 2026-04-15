@@ -489,7 +489,6 @@ const submit = async () => {
     showToast("success", "Thêm nhân viên thành công!");
 
     setTimeout(() => {
-      // Mở khóa lại form trước khi điều hướng
       saving.value = false;
       router.push({ name: "tai-khoan-nhan-vien", query: { added: true } });
     }, 700);
