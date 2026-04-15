@@ -395,6 +395,7 @@ const submit = async () => {
 
     // 3. Đợi 700ms rồi chuyển trang (Không set saving.value = false ở đây nữa)
     setTimeout(() => {
+      saving.value = false;
       router.push({ name: "tai-khoan-khach-hang", query: { added: true } });
     }, 700);
 
