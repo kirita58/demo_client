@@ -442,6 +442,23 @@ const validate = () => {
   if (!form.value.ngaySinh) {
     return "Ngày sinh không được để trống";
   }
+
+  if (form.value.ngaySinh) {
+    const today = new Date();
+    const birthDate = new Date(form.value.ngaySinh);
+
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+
+    if (age < 18) {
+      return "Nhân viên phải từ 18 tuổi trở lên";
+    }
+  }
+
   if (!form.value.idQuyenHan) {
     return "Quyền hạn không được để trống";
   }

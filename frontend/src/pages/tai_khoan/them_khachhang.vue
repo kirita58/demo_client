@@ -78,12 +78,8 @@
               <span>Đặt làm mặc định</span>
             </label>
 
-            <button
-              class="btn btn-outline danger"
-              type="button"
-              :disabled="addresses.length === 1"
-              @click="removeAddress(idx)"
-            >
+            <button class="btn btn-outline danger" type="button" :disabled="addresses.length === 1"
+              @click="removeAddress(idx)">
               <i class="fa-solid fa-trash"></i> Xóa
             </button>
           </div>
@@ -135,7 +131,8 @@
         </div>
 
         <div class="hint mt">
-          * Theo DB: chỉ bắt buộc <span class="hint-plain">Tên địa chỉ</span>. Các phần Tỉnh/Huyện/Xã/Số nhà có thể để trống (null).
+          * Theo DB: chỉ bắt buộc <span class="hint-plain">Tên địa chỉ</span>. Các phần Tỉnh/Huyện/Xã/Số nhà có thể để
+          trống (null).
         </div>
       </div>
 
@@ -309,6 +306,23 @@ const validate = () => {
     return { type: "customer", msg: "Số điện thoại không đúng định dạng (10 số)" };
   }
 
+  if (form.value.ngaySinh) {
+    const today = new Date();
+    const birthDate = new Date(form.value.ngaySinh);
+
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+
+    // Nếu chưa tới sinh nhật trong năm nay thì trừ 1 tuổi
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+
+    if (age < 16) {
+      return { type: "customer", msg: "Khách hàng phải từ 16 tuổi trở lên" };
+    }
+  }
+
   if (!addresses.value.length) {
     return { type: "address", msg: "Vui lòng thêm ít nhất 1 địa chỉ" };
   }
@@ -477,6 +491,7 @@ onMounted(async () => {
   gap: 8px;
   transition: 0.2s;
 }
+
 .btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
@@ -487,6 +502,7 @@ onMounted(async () => {
   border: 1px solid rgba(17, 24, 39, 0.14);
   color: rgba(17, 24, 39, 0.88);
 }
+
 .btn-outline:hover {
   background: rgba(17, 24, 39, 0.04);
 }
@@ -495,6 +511,7 @@ onMounted(async () => {
   border-color: rgba(239, 68, 68, 0.35);
   color: #b42324;
 }
+
 .btn-outline.danger:hover {
   background: rgba(239, 68, 68, 0.06);
 }
@@ -518,6 +535,7 @@ onMounted(async () => {
   gap: 12px;
   margin-bottom: 12px;
 }
+
 .col {
   display: flex;
   flex-direction: column;
@@ -529,6 +547,7 @@ onMounted(async () => {
   font-weight: 400;
   color: rgba(17, 24, 39, 0.82);
 }
+
 .req {
   color: #ef4444;
 }
@@ -544,6 +563,7 @@ onMounted(async () => {
   font-size: 13px;
   font-weight: 400;
 }
+
 .input:focus {
   border-color: rgba(255, 77, 79, 0.65);
   box-shadow: 0 0 0 3px rgba(255, 77, 79, 0.12);
@@ -554,6 +574,7 @@ onMounted(async () => {
   padding-top: 12px;
   border-top: 1px dashed rgba(17, 24, 39, 0.12);
 }
+
 .block-head {
   display: flex;
   align-items: center;
@@ -561,6 +582,7 @@ onMounted(async () => {
   gap: 10px;
   margin-bottom: 10px;
 }
+
 .block-title {
   font-size: 14px;
   font-weight: 500;
@@ -574,6 +596,7 @@ onMounted(async () => {
   background: #fff;
   margin-top: 12px;
 }
+
 .addr-top {
   display: flex;
   align-items: center;
@@ -590,6 +613,7 @@ onMounted(async () => {
   font-weight: 400;
   color: rgba(17, 24, 39, 0.78);
 }
+
 .radio input {
   transform: translateY(1px);
 }
@@ -611,9 +635,11 @@ onMounted(async () => {
   font-size: 12px;
   color: rgba(17, 24, 39, 0.55);
 }
+
 .hint.mt {
   margin-top: 10px;
 }
+
 .hint-plain {
   font-weight: 400;
 }
@@ -628,6 +654,7 @@ onMounted(async () => {
   font-size: 13px;
   font-weight: 400;
 }
+
 .alert.error {
   background: rgba(239, 68, 68, 0.10);
   color: #991b1b;
@@ -656,10 +683,12 @@ onMounted(async () => {
   border-color: #ef4444;
   background: #fef2f2;
 }
+
 .ss-page-toast.success {
   border-color: #22c55e;
   background: #f0fdf4;
 }
+
 .ss-page-toast.info {
   border-color: #3b82f6;
   background: #eff6ff;
@@ -669,12 +698,15 @@ onMounted(async () => {
   font-size: 18px;
   color: rgba(17, 24, 39, 0.55);
 }
+
 .ss-page-toast.success .ss-page-toast-ic {
   color: #16a34a;
 }
+
 .ss-page-toast.error .ss-page-toast-ic {
   color: #dc2626;
 }
+
 .ss-page-toast.info .ss-page-toast-ic {
   color: #2563eb;
 }
@@ -693,6 +725,7 @@ onMounted(async () => {
   font-size: 18px;
   line-height: 1;
 }
+
 .ss-page-toast-x:hover {
   color: #6b7280;
 }
@@ -702,6 +735,7 @@ onMounted(async () => {
     transform: translateX(100%);
     opacity: 0;
   }
+
   to {
     transform: translateX(0);
     opacity: 1;
